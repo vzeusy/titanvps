@@ -76,12 +76,10 @@ atualizar_script() {
     return 0
   fi
   if (( ! UPDATE_AVAILABLE )); then
-    wait_enter_box 'SCRIPT ATUALIZADO' "Versao atual: v$CURRENT_VERSION" "Versao publicada: v$REMOTE_VERSION" 'Nenhuma atualizacao disponivel.'
+    # Sem versao nova: manter o menu principal, sem aviso ou espera por Enter.
     return 0
   fi
-  if ! confirm_with_menu 'ATUALIZAR SCRIPT' "Versao instalada: v$CURRENT_VERSION" "Versao no GitHub: v$REMOTE_VERSION" 'Baixar e substituir os arquivos do TITAN VPS?'; then
-    return 0
-  fi
+  # Com nova versao detectada, iniciar a atualizacao sem tela de confirmacao.
   local stage archive unpack candidate backup entry
   if ! command -v python3 >/dev/null 2>&1; then
     wait_enter_box 'ERRO' 'Python 3 necessario para validar o ZIP com seguranca.'
@@ -233,11 +231,13 @@ PYZIP
     wait_enter_box 'ERRO' 'Falha ao registrar comando titanvps. Arquivos anteriores restaurados.'
     return 0
   fi
-  # Evitar a tela de conclusao e recarregar as funcoes que acabaram de atualizar.
+  # Reinicia o TITAN VPS pelo ponto de entrada oficial, na mesma sessao.
+  # Nao exibe modal de sucesso, nao espera Enter e nao devolve o controle
+  # ao processo antigo (que poderia sair para o shell).
   rm -rf -- "$stage" "$backup"
   hash -r 2>/dev/null || true
-  exec /bin/bash "$TITANVPS_ROOT/scripts/menu.sh"
-  # So chega aqui caso o exec falhe.
-  wait_enter_box 'ERRO' 'Falha ao reiniciar o menu. Execute titanvps novamente.'
-  return 0
+  exec /bin/bash "$TITANVPS_ROOT/titanvps.sh"
+  # Se exec falhar, o shell ainda esta ativo: exibir falha real.
+  printf '\nErro: nao foi possivel reabrir o TITAN VPS. Execute titanvps novamente.\n' >&2
+  return 1
 }
