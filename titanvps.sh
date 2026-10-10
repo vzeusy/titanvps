@@ -4,6 +4,13 @@ set -Eeuo pipefail
 # Executado do diretorio instalado ou diretamente por curl/process substitution.
 BASE_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 if [[ -f "$BASE_DIR/scripts/menu.sh" ]]; then
+  # Autocorrecao para instalacoes anteriores sem atalho de comando.
+  if (( EUID == 0 )) && [[ "$BASE_DIR" == /opt/titanvps ]]; then
+    install -d -m 0755 /usr/local/bin
+    printf '#!/usr/bin/env bash\nexec /bin/bash /opt/titanvps/titanvps.sh "$@"\n' > /usr/local/bin/.titanvps-command.tmp
+    chmod 0755 /usr/local/bin/.titanvps-command.tmp
+    mv -f /usr/local/bin/.titanvps-command.tmp /usr/local/bin/titanvps
+  fi
   exec bash "$BASE_DIR/scripts/menu.sh" "$@"
 fi
 
@@ -66,5 +73,14 @@ with zipfile.ZipFile(archive) as z:
 PYZIP
 bash -n "$TARGET_DIR/titanvps.sh"
 for script in "$TARGET_DIR"/scripts/*.sh; do bash -n "$script"; done
-echo 'TITAN VPS instalado. Abrindo menu...'
+# Registrar comando global de forma atomica.
+install -d -m 0755 /usr/local/bin
+launcher_tmp="$(mktemp /usr/local/bin/.titanvps.XXXXXXXX)"
+printf '#!/usr/bin/env bash\nexec /bin/bash /opt/titanvps/titanvps.sh "$@"\n' > "$launcher_tmp"
+chmod 0755 "$launcher_tmp"
+mv -f -- "$launcher_tmp" /usr/local/bin/titanvps
+if ! command -v titanvps >/dev/null 2>&1; then
+  echo 'Aviso: /usr/local/bin nao esta no PATH desta sessao. Use /usr/local/bin/titanvps.' >&2
+fi
+echo 'TITAN VPS instalado. Comando: titanvps. Abrindo menu...' 
 exec bash "$TARGET_DIR/scripts/menu.sh" "$@"

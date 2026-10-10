@@ -206,6 +206,21 @@ PYZIP
     done < "$prior_manifest"
   fi
   install -m 0644 "$new_manifest" "$prior_manifest"
+  # Garantir que o comando global exista apos atualizacoes de instalacoes antigas.
+  if [[ "$TITANVPS_ROOT" == /opt/titanvps && $EUID -eq 0 ]]; then
+    if install -d -m 0755 /usr/local/bin; then
+      local command_tmp
+      command_tmp="$(mktemp /usr/local/bin/.titanvps.XXXXXXXX)" || command_tmp=''
+      if [[ -n "$command_tmp" ]]; then
+        printf '#!/usr/bin/env bash\nexec /bin/bash /opt/titanvps/titanvps.sh "$@"\n' > "$command_tmp"
+        chmod 0755 "$command_tmp"
+        if ! mv -f -- "$command_tmp" /usr/local/bin/titanvps; then
+          rm -f -- "$command_tmp"
+          printf 'Aviso: nao foi possivel criar o comando titanvps.\n' >&2
+        fi
+      fi
+    fi
+  fi
   rm -rf -- "$stage" "$backup"
   CURRENT_VERSION="$REMOTE_VERSION"
   UPDATE_AVAILABLE=0

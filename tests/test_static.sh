@@ -11,3 +11,7 @@ echo 'OK: sintaxe, arquivos e referencias.'
 # A opção A deve usar a mesma coluna das demais e caber em 42 colunas.
 ! grep -Fq "printf '%b  > [A]" "$root/scripts/menu.sh"
 grep -Fq "printf '%b> [A] Atualizar Script ('" "$root/scripts/menu.sh"
+
+# Instalacao e atualizacao devem registrar o comando global.
+grep -Fq "/usr/local/bin/titanvps" "$root/titanvps.sh"
+grep -Fq "/usr/local/bin/titanvps" "$root/scripts/atualizador.sh"

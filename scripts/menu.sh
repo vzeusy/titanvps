@@ -24,6 +24,9 @@ NAV_DIGIT=''
 }
 
 clear_screen() {
+  # Quando a tela esta sendo preparada para renderizacao diferencial,
+  # nao limpar o terminal dentro do renderer.
+  [[ "${MENU_RENDER_BUFFERED:-0}" == 1 ]] && return 0
   [[ -t 1 ]] && clear 2>/dev/null || true
 }
 
@@ -75,10 +78,35 @@ read_navigation() {
   esac
 }
 
+# Redesenha apenas linhas alteradas, sem limpar a tela a cada tecla.
+# Terminal sem cursor ANSI continua usando a renderizacao tradicional.
 menu_select() {
   local renderer="$1" count="$2" selected="${3:-0}"
+  local -a previous=() current=()
+  local i limit
+  local differential=0
+  [[ -t 1 && -t 0 && "${TERM:-dumb}" != dumb ]] && differential=1
+  if (( differential )); then
+    clear_screen
+    printf '\033[?25l'
+  fi
   while true; do
-    "$renderer" "$selected"
+    if (( differential )); then
+      # Captura a composicao completa em memoria antes de emitir bytes no terminal.
+      # Evita apagar/desenhar a moldura inteira ao navegar no Termius.
+      mapfile -t current < <(MENU_RENDER_BUFFERED=1 "$renderer" "$selected")
+      limit=${#current[@]}
+      (( ${#previous[@]} > limit )) && limit=${#previous[@]}
+      for ((i=0; i<limit; i++)); do
+        if [[ "${previous[i]-}" != "${current[i]-}" ]]; then
+          printf '\033[%d;1H\033[2K%s' "$((i+1))" "${current[i]-}"
+        fi
+      done
+      printf '\033[%d;1H' "$((limit+1))"
+      previous=("${current[@]}")
+    else
+      "$renderer" "$selected"
+    fi
     read_navigation
     case "$NAV_KEY" in
       up) selected=$(( (selected - 1 + count) % count )) ;;
@@ -87,8 +115,6 @@ menu_select() {
         if [[ "$renderer" == 'render_main_menu' ]]; then selected=0; fi
         ;;
       digit)
-        # Atalho numérico apenas MARCA a opção; Enter continua sendo obrigatório.
-        # Na navegação do gerenciador, [0] é sempre a última opção.
         if [[ "$NAV_DIGIT" == "0" ]]; then
           selected=$((count - 1))
         else
@@ -100,15 +126,19 @@ menu_select() {
         ;;
       enter)
         MENU_SELECTED="$selected"
-        return 0
+        break
         ;;
       eof)
         MENU_SELECTED=$((count - 1))
-        return 0
+        break
         ;;
       *) ;;
     esac
   done
+  if (( differential )); then
+    printf '\033[?25h\033[%d;1H\033[J' "$((limit+1))"
+  fi
+  return 0
 }
 
 wait_enter_box() {
