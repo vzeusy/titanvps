@@ -62,10 +62,10 @@ check_github_version() {
   if version_greater "$REMOTE_VERSION" "$CURRENT_VERSION"; then UPDATE_AVAILABLE=1; fi
 }
 print_update_version_label() {
-  if (( UPDATE_AVAILABLE )); then
-    printf 'v%b%s%b / v%b%s%b' "$RED" "$CURRENT_VERSION" "$NC" "$GREEN" "$REMOTE_VERSION" "$NC"
+  if [[ "$CURRENT_VERSION" == "$REMOTE_VERSION" ]] || (( ! UPDATE_AVAILABLE )); then
+    printf '%bv%s / v%s%b' '\033[0;37m' "$CURRENT_VERSION" "$REMOTE_VERSION" '\033[0m'
   else
-    printf 'v\033[0;37m%s%b / v\033[0;37m%s%b' "$CURRENT_VERSION" "$NC" "$REMOTE_VERSION" "$NC"
+    printf '%bv%s%b / %bv%s%b' '\033[1;31m' "$CURRENT_VERSION" '\033[0m' '\033[1;32m' "$REMOTE_VERSION" '\033[0m'
   fi
 }
 

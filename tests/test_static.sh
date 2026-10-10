@@ -10,7 +10,7 @@ echo 'OK: sintaxe, arquivos e referencias.'
 
 # A opção A deve usar a mesma coluna das demais e caber em 42 colunas.
 ! grep -Fq "printf '%b  > [A]" "$root/scripts/menu.sh"
-grep -Fq "printf '%b> [A] Atualizar Script ('" "$root/scripts/menu.sh"
+grep -Fq "printf '%b> [A] Atualizar Script%b ('" "$root/scripts/menu.sh"
 
 # Instalacao e atualizacao devem registrar o comando global.
 grep -Fq "/usr/local/bin/titanvps" "$root/titanvps.sh"
@@ -29,3 +29,8 @@ grep -Fq "[[ \"\$renderer\" == 'render_main_menu' ]] && offset=1" "$root/scripts
 
 # Ao selecionar A sem nova versao, nao abrir tela de aviso.
 ! grep -Fq "wait_enter_box 'SCRIPT ATUALIZADO'" "$root/scripts/atualizador.sh"
+
+# A consulta em segundo plano deve ocorrer sem bloquear a leitura das setas.
+grep -Fq 'GITHUB_POLL_SECONDS=60' "$root/scripts/menu.sh"
+grep -Fq 'version_watch_collect "$watch_dir"' "$root/scripts/menu.sh"
+grep -Fq 'read_navigation 0.5' "$root/scripts/menu.sh"

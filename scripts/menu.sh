@@ -57,8 +57,14 @@ read_navigation() {
   local first='' rest=''
   NAV_KEY='other'
   NAV_DIGIT=''
-  if ! IFS= read -rsn1 first; then
-    NAV_KEY='eof'
+  local read_status=0
+  if [[ -n "${1:-}" ]]; then
+    IFS= read -rsn1 -t "$1" first || read_status=$?
+  else
+    IFS= read -rsn1 first || read_status=$?
+  fi
+  if (( read_status != 0 )); then
+    if (( read_status > 128 )); then NAV_KEY='timeout'; else NAV_KEY='eof'; fi
     return 0
   fi
   if [[ -z "$first" ]]; then
@@ -78,6 +84,46 @@ read_navigation() {
   esac
 }
 
+# Consulta periodica em segundo plano para nao travar setas/Enter nem piscar.
+# Somente o processo do menu altera o estado das versoes e desenha no terminal.
+GITHUB_POLL_SECONDS=60
+version_watch_start() {
+  local result_dir="$1"
+  [[ -n "${result_dir:-}" ]] || return 0
+  rm -f -- "$result_dir/result" "$result_dir/result.tmp"
+  if ! github_is_configured || ! command -v curl >/dev/null 2>&1; then
+    printf 'erro\n' > "$result_dir/result"
+    return 0
+  fi
+  (
+    if curl --fail --silent --location --connect-timeout 3 --max-time 7 --retry 0 \
+      "https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/${GITHUB_BRANCH}/version" \
+      > "$result_dir/result.tmp" 2>/dev/null; then
+      mv -f -- "$result_dir/result.tmp" "$result_dir/result"
+    else
+      printf 'erro\n' > "$result_dir/result"
+      rm -f -- "$result_dir/result.tmp"
+    fi
+  ) </dev/null >/dev/null 2>&1 &
+  VERSION_WATCH_PID=$!
+}
+version_watch_collect() {
+  local result_dir="$1" latest
+  [[ -f "$result_dir/result" ]] || return 0
+  latest="$(tr -d '\r\n' < "$result_dir/result" 2>/dev/null || true)"
+  rm -f -- "$result_dir/result"
+  if valid_version "$latest"; then
+    get_local_version
+    REMOTE_VERSION="$latest"
+    UPDATE_AVAILABLE=0
+    version_greater "$REMOTE_VERSION" "$CURRENT_VERSION" && UPDATE_AVAILABLE=1
+    UPDATE_CHECK_ERROR=''
+  else
+    UPDATE_CHECK_ERROR='Nao foi possivel consultar o GitHub.'
+    # Nao declarar a versao atual como remota se a consulta falhar.
+  fi
+}
+
 # Redesenha apenas linhas alteradas, sem limpar a tela a cada tecla.
 # Terminal sem cursor ANSI continua usando a renderizacao tradicional.
 menu_select() {
@@ -85,12 +131,26 @@ menu_select() {
   local -a previous=() current=()
   local i limit
   local differential=0
+  local watch_dir='' watch_next=0 watch_enabled=0
+  if [[ "$renderer" == 'render_main_menu' ]]; then
+    watch_enabled=1
+    watch_dir="$(mktemp -d)"
+    version_watch_start "$watch_dir"
+    watch_next=$(( SECONDS + GITHUB_POLL_SECONDS ))
+  fi
   [[ -t 1 && -t 0 && "${TERM:-dumb}" != dumb ]] && differential=1
   if (( differential )); then
     clear_screen
     printf '\033[?25l'
   fi
   while true; do
+    if (( watch_enabled )); then
+      version_watch_collect "$watch_dir"
+      if (( SECONDS >= watch_next )); then
+        version_watch_start "$watch_dir"
+        watch_next=$(( SECONDS + GITHUB_POLL_SECONDS ))
+      fi
+    fi
     if (( differential )); then
       # Captura a composicao completa em memoria antes de emitir bytes no terminal.
       # Evita apagar/desenhar a moldura inteira ao navegar no Termius.
@@ -107,7 +167,7 @@ menu_select() {
     else
       "$renderer" "$selected"
     fi
-    read_navigation
+    if (( watch_enabled )); then read_navigation 0.5; else read_navigation; fi
     case "$NAV_KEY" in
       up) selected=$(( (selected - 1 + count) % count )) ;;
       down) selected=$(( (selected + 1) % count )) ;;
@@ -143,6 +203,10 @@ menu_select() {
       *) ;;
     esac
   done
+  if (( watch_enabled )); then
+    [[ -z "${VERSION_WATCH_PID:-}" ]] || kill "$VERSION_WATCH_PID" 2>/dev/null || true
+    rm -rf -- "$watch_dir"
+  fi
   if (( differential )); then
     printf '\033[?25h\033[%d;1H\033[J' "$((limit+1))"
   fi
@@ -217,14 +281,16 @@ render_main_menu() {
   # Os prefixos '> ' e '  ' usam exatamente duas colunas em todos os itens.
   # Não imprimir espaços extras na opção A, que é a mais longa do menu.
   if (( selected == 0 )); then
-    printf '%b> [A] Atualizar Script (' "$CYAN"
-    printf 'v%s / v%s' "$CURRENT_VERSION" "$REMOTE_VERSION"
-    printf ')%b\n' "$NC"
+    printf '%b> [A] Atualizar Script%b (' "$CYAN" "$WHITE"
   else
-    printf '%b  [A] Atualizar Script (%b' "$WHITE" "$NC"
-    print_update_version_label
-    printf '%b)%b\n' "$WHITE" "$NC"
+    printf '%b  [A] Atualizar Script (' "$WHITE"
   fi
+  if [[ "$CURRENT_VERSION" == "$REMOTE_VERSION" ]] || (( ! UPDATE_AVAILABLE )); then
+    printf '%bv%s / v%s%b' "$DIM" "$CURRENT_VERSION" "$REMOTE_VERSION" "$WHITE"
+  else
+    printf '%bv%s%b / %bv%s%b' "$RED" "$CURRENT_VERSION" "$WHITE" "$GREEN" "$REMOTE_VERSION" "$WHITE"
+  fi
+  printf ')%b\n' "$NC"
   print_sep
   render_option "$selected" 1 "[1] Atualizar Servidor"
   render_option "$selected" 2 "[2] Alterar Senha Root"
