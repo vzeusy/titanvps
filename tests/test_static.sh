@@ -7,3 +7,7 @@ grep -q titanvps_render_active_services "$root/scripts/menu.sh"
 grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$' "$root/version"
 ! grep -R -n -E 'gerenciador\.sh|gerenciador-backup|gerenciador-badvpn|gerenciador-ssh|Não será realizada remoção do painel' "$root/scripts" "$root/README.md"
 echo 'OK: sintaxe, arquivos e referencias.'
+
+# A opção A deve usar a mesma coluna das demais e caber em 42 colunas.
+! grep -Fq "printf '%b  > [A]" "$root/scripts/menu.sh"
+grep -Fq "printf '%b> [A] Atualizar Script ('" "$root/scripts/menu.sh"

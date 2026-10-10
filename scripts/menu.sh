@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 # TITAN VPS: menu e navegacao. Operacoes executadas somente por selecao.
-CYAN='\033[1;36m'
-BLUE='\033[0;34m'
-WHITE='\033[1;37m'
-DIM='\033[0;90m'
+CYAN='\033[1;96m'
+BLUE='\033[1;94m'
+WHITE='\033[1;97m'
+DIM='\033[0;37m'
 GREEN='\033[1;32m'
 YELLOW='\033[1;33m'
 RED='\033[1;31m'
@@ -44,7 +44,7 @@ print_footer() { printf '%b%s%b\n' "$DIM" "$MENU_FOOTER" "$NC"; }
 render_option() {
   local selected="$1" index="$2" label="$3"
   if (( selected == index )); then
-    printf '%b  > %s%b\n' "$CYAN" "$label" "$NC"
+    printf '%b> %s%b\n' "$CYAN" "$label" "$NC"
   else
     printf '%b  %s%b\n' "$WHITE" "$label" "$NC"
   fi
@@ -176,14 +176,16 @@ render_main_menu() {
   center_title "TITAN VPS"
   print_sep
   titanvps_render_active_services
+  # Os prefixos '> ' e '  ' usam exatamente duas colunas em todos os itens.
+  # Não imprimir espaços extras na opção A, que é a mais longa do menu.
   if (( selected == 0 )); then
-    printf '%b  > [A] Atualizar Script (' "$CYAN"
-    print_update_version_label
+    printf '%b> [A] Atualizar Script (' "$CYAN"
+    printf 'v%s / v%s' "$CURRENT_VERSION" "$REMOTE_VERSION"
     printf ')%b\n' "$NC"
   else
-    printf '%b  [A] Atualizar Script (' "$WHITE"
+    printf '%b  [A] Atualizar Script (%b' "$WHITE" "$NC"
     print_update_version_label
-    printf ')%b\n' "$NC"
+    printf '%b)%b\n' "$WHITE" "$NC"
   fi
   print_sep
   render_option "$selected" 1 "[1] Atualizar Servidor"
