@@ -3,6 +3,8 @@ set -Eeuo pipefail
 # TITAN VPS: menu e navegacao. Operacoes executadas somente por selecao.
 CYAN='\033[1;36m'
 BLUE='\033[0;34m'
+WHITE='\033[1;37m'
+DIM='\033[0;90m'
 GREEN='\033[1;32m'
 YELLOW='\033[1;33m'
 RED='\033[1;31m'
@@ -31,20 +33,20 @@ center_title() {
   local len=${#title}
   local left=$(( (width - len) / 2 ))
   (( left < 0 )) && left=0
-  printf '%*s%s\n' "$left" '' "$title"
+  printf '%b%*s%s%b\n' "$WHITE" "$left" '' "$title" "$NC"
 }
 
-print_top() { printf '%s\n' "$BOX_TOP"; }
-print_sep() { printf '%s\n' "$BOX_SEP"; }
-print_bottom() { printf '%s\n' "$BOX_BOTTOM"; }
-print_footer() { printf '%s\n' "$MENU_FOOTER"; }
+print_top() { printf '%b%s%b\n' "$BLUE" "$BOX_TOP" "$NC"; }
+print_sep() { printf '%b%s%b\n' "$BLUE" "$BOX_SEP" "$NC"; }
+print_bottom() { printf '%b%s%b\n' "$BLUE" "$BOX_BOTTOM" "$NC"; }
+print_footer() { printf '%b%s%b\n' "$DIM" "$MENU_FOOTER" "$NC"; }
 
 render_option() {
   local selected="$1" index="$2" label="$3"
   if (( selected == index )); then
     printf '%b  > %s%b\n' "$CYAN" "$label" "$NC"
   else
-    printf '  %s\n' "$label"
+    printf '%b  %s%b\n' "$WHITE" "$label" "$NC"
   fi
 }
 
@@ -174,15 +176,14 @@ render_main_menu() {
   center_title "TITAN VPS"
   print_sep
   titanvps_render_active_services
-  print_sep
   if (( selected == 0 )); then
     printf '%b  > [A] Atualizar Script (' "$CYAN"
     print_update_version_label
     printf ')%b\n' "$NC"
   else
-    printf '    [A] Atualizar Script ('
+    printf '%b  [A] Atualizar Script (' "$WHITE"
     print_update_version_label
-    printf ')\n'
+    printf ')%b\n' "$NC"
   fi
   print_sep
   render_option "$selected" 1 "[1] Atualizar Servidor"
