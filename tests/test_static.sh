@@ -34,3 +34,14 @@ grep -Fq "[[ \"\$renderer\" == 'render_main_menu' ]] && offset=1" "$root/scripts
 grep -Fq 'GITHUB_POLL_SECONDS=60' "$root/scripts/menu.sh"
 grep -Fq 'version_watch_collect "$watch_dir"' "$root/scripts/menu.sh"
 grep -Fq 'read_navigation 0.5' "$root/scripts/menu.sh"
+
+# Indicador de versao e detector: a=atual, n=nova; somente no menu principal.
+grep -Fq "a%s / n%s" "$root/scripts/menu.sh"
+grep -Fq 'watch_enabled=1' "$root/scripts/menu.sh"
+grep -Fq 'kill -0 "$VERSION_WATCH_PID"' "$root/scripts/menu.sh"
+grep -Fq 'titanvps_refresh_active_labels' "$root/scripts/menu.sh"
+[[ ! -e "$root/github.conf" ]]
+
+# O DTProto oficial usa proto-server.service; nao desenhar divisoria antes dos servicos.
+grep -Fq "titanvps_service_active proto-server.service" "$root/scripts/status.sh"
+! grep -Fq $'  print_sep\n  for ((i=0;' "$root/scripts/status.sh"

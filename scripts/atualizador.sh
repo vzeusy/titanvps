@@ -63,9 +63,9 @@ check_github_version() {
 }
 print_update_version_label() {
   if [[ "$CURRENT_VERSION" == "$REMOTE_VERSION" ]] || (( ! UPDATE_AVAILABLE )); then
-    printf '%bv%s / v%s%b' '\033[0;37m' "$CURRENT_VERSION" "$REMOTE_VERSION" '\033[0m'
+    printf '%ba%s / n%s%b' '\033[0;37m' "$CURRENT_VERSION" "$REMOTE_VERSION" '\033[0m'
   else
-    printf '%bv%s%b / %bv%s%b' '\033[1;31m' "$CURRENT_VERSION" '\033[0m' '\033[1;32m' "$REMOTE_VERSION" '\033[0m'
+    printf '%ba%s%b / %bn%s%b' '\033[1;31m' "$CURRENT_VERSION" '\033[0m' '\033[1;32m' "$REMOTE_VERSION" '\033[0m'
   fi
 }
 
@@ -122,7 +122,7 @@ PYZIP
     return 0
   fi
   candidate="$(find "$unpack" -mindepth 1 -maxdepth 1 -type d -print -quit)"
-  if [[ -z "$candidate" || ! -f "$candidate/version" || ! -f "$candidate/titanvps.sh" || ! -f "$candidate/scripts/menu.sh" || ! -f "$candidate/scripts/operacoes.sh" || ! -f "$candidate/scripts/badvpn.sh" || ! -f "$candidate/scripts/formatar.sh" || ! -f "$candidate/scripts/atualizador.sh" || ! -f "$candidate/scripts/central_ssh.sh" ]]; then
+  if [[ -z "$candidate" || ! -f "$candidate/version" || ! -f "$candidate/titanvps.sh" || ! -f "$candidate/scripts/menu.sh" || ! -f "$candidate/scripts/operacoes.sh" || ! -f "$candidate/scripts/badvpn.sh" || ! -f "$candidate/scripts/formatar.sh" || ! -f "$candidate/scripts/atualizador.sh" || ! -f "$candidate/scripts/central_ssh.sh" || ! -f "$candidate/scripts/status.sh" ]]; then
     rm -rf -- "$stage"
     wait_enter_box 'ERRO' 'O repositorio nao contem a estrutura esperada.'
     return 0
@@ -204,6 +204,10 @@ PYZIP
     done < "$prior_manifest"
   fi
   install -m 0644 "$new_manifest" "$prior_manifest"
+  # Remover apenas configuracao legada padrao, nunca a configuracao personalizada.
+  if [[ -f "$TITANVPS_ROOT/github.conf" ]] && grep -q "GITHUB_USER='SEU_USUARIO'" "$TITANVPS_ROOT/github.conf"; then
+    rm -f -- "$TITANVPS_ROOT/github.conf"
+  fi
   # Registrar o comando global antes de considerar a atualizacao bem-sucedida.
   # Usar caminho real da instalacao (inclusive instalacoes anteriores).
   if (( EUID == 0 )); then

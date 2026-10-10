@@ -14,19 +14,7 @@ formatar_servidor() {
   printf '  O acesso SSH pode ser interrompido.\n'
   printf '  Mantenha backup externo e console VPS.\n'
   print_bottom
-  if ! confirm_with_menu 'FORMATAR SERVIDOR' \
-    'Abrir ferramenta VPS Reinstaller?' \
-    'Nenhum disco sera apagado neste passo.'; then
-    return 0
-  fi
-
   if [[ ! -x "$REINSTALLER_BIN" ]]; then
-    if ! confirm_with_menu 'INSTALAR REINSTALLER' \
-      'Instalar ferramenta de terceiros?' \
-      'Origem: nandoslayer/vps-reinstaller' \
-      'Requer conexao com a internet.'; then
-      return 0
-    fi
     local dep
     for dep in curl bash mktemp rm; do
       if ! command -v "$dep" >/dev/null 2>&1; then

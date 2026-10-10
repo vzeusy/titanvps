@@ -87,8 +87,14 @@ read_navigation() {
 # Consulta periodica em segundo plano para nao travar setas/Enter nem piscar.
 # Somente o processo do menu altera o estado das versoes e desenha no terminal.
 GITHUB_POLL_SECONDS=60
+VERSION_WATCH_PID=''
 version_watch_start() {
   local result_dir="$1"
+  # No máximo uma consulta por vez. Evita processos e downloads sobrepostos.
+  if [[ -n "${VERSION_WATCH_PID:-}" ]] && kill -0 "$VERSION_WATCH_PID" 2>/dev/null; then
+    return 0
+  fi
+  VERSION_WATCH_PID=''
   [[ -n "${result_dir:-}" ]] || return 0
   rm -f -- "$result_dir/result" "$result_dir/result.tmp"
   if ! github_is_configured || ! command -v curl >/dev/null 2>&1; then
@@ -204,7 +210,11 @@ menu_select() {
     esac
   done
   if (( watch_enabled )); then
-    [[ -z "${VERSION_WATCH_PID:-}" ]] || kill "$VERSION_WATCH_PID" 2>/dev/null || true
+    if [[ -n "${VERSION_WATCH_PID:-}" ]]; then
+      kill "$VERSION_WATCH_PID" 2>/dev/null || true
+      wait "$VERSION_WATCH_PID" 2>/dev/null || true
+      VERSION_WATCH_PID=''
+    fi
     rm -rf -- "$watch_dir"
   fi
   if (( differential )); then
@@ -230,38 +240,6 @@ wait_enter_box() {
   IFS= read -r _ || true
 }
 
-CONFIRM_TITLE='CONFIRMAR'
-CONFIRM_CONTINUE_LABEL='[1] Continuar'
-CONFIRM_LINES=()
-
-render_confirmation_menu() {
-  local selected="$1" line
-  clear_screen
-  print_top
-  center_title "$CONFIRM_TITLE"
-  print_sep
-  for line in "${CONFIRM_LINES[@]}"; do
-    printf '  %s\n' "$line"
-  done
-  print_sep
-  render_option "$selected" 0 "$CONFIRM_CONTINUE_LABEL"
-  print_sep
-  render_option "$selected" 1 "[0] Voltar"
-  print_bottom
-  print_footer
-}
-
-confirm_with_menu() {
-  local title="$1"
-  shift || true
-  CONFIRM_TITLE="$title"
-  CONFIRM_CONTINUE_LABEL='[1] Continuar'
-  CONFIRM_LINES=("$@")
-  menu_select render_confirmation_menu 2 0
-  (( MENU_SELECTED == 0 ))
-}
-
-
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/operacoes.sh"
 source "$SCRIPT_DIR/badvpn.sh"
@@ -285,10 +263,12 @@ render_main_menu() {
   else
     printf '%b  [A] Atualizar Script (' "$WHITE"
   fi
-  if [[ "$CURRENT_VERSION" == "$REMOTE_VERSION" ]] || (( ! UPDATE_AVAILABLE )); then
-    printf '%bv%s / v%s%b' "$DIM" "$CURRENT_VERSION" "$REMOTE_VERSION" "$WHITE"
+  if [[ -n "$UPDATE_CHECK_ERROR" ]]; then
+    printf '%ba%s / n?%b' "$DIM" "$CURRENT_VERSION" "$WHITE"
+  elif [[ "$CURRENT_VERSION" == "$REMOTE_VERSION" ]] || (( ! UPDATE_AVAILABLE )); then
+    printf '%ba%s / n%s%b' "$DIM" "$CURRENT_VERSION" "$REMOTE_VERSION" "$WHITE"
   else
-    printf '%bv%s%b / %bv%s%b' "$RED" "$CURRENT_VERSION" "$WHITE" "$GREEN" "$REMOTE_VERSION" "$WHITE"
+    printf '%ba%s%b / %bn%s%b' "$RED" "$CURRENT_VERSION" "$WHITE" "$GREEN" "$REMOTE_VERSION" "$WHITE"
   fi
   printf ')%b\n' "$NC"
   print_sep
@@ -305,6 +285,7 @@ render_main_menu() {
 
 main_menu() {
   while true; do
+    titanvps_refresh_active_labels
     menu_select render_main_menu 6 0
     case "$MENU_SELECTED" in
       0) atualizar_script; check_github_version ;;

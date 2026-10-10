@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Somente serviços efetivamente ativos; sem exibir serviços ausentes/parados.
-# Atualiza a cada desenho do menu.
+# Cache atualizado ao retornar ao menu principal, nao a cada tecla.
 titanvps_service_active() {
   local unit
   command -v systemctl >/dev/null 2>&1 || return 1
@@ -16,18 +16,20 @@ titanvps_active_labels() {
     result+=(BadVPN)
   fi
   # Detecta apenas unidades efetivamente ativas. Não confunde instalação com ativação.
-  if titanvps_service_active dtproto.service dtproto-server.service DTProto.service; then
+  if titanvps_service_active proto-server.service dtproto.service dtproto-server.service DTProto.service; then
     result+=(DTProto)
   fi
   if titanvps_service_active sshorizon.service sshorizon-server.service sshorizon-panel.service; then
     result+=(SSHorizon)
   fi
 }
+TITANVPS_ACTIVE_LABELS=()
+titanvps_refresh_active_labels() {
+  titanvps_active_labels TITANVPS_ACTIVE_LABELS
+}
 titanvps_render_active_services() {
-  local labels=() i
-  titanvps_active_labels labels
+  local labels=("${TITANVPS_ACTIVE_LABELS[@]}") i
   ((${#labels[@]})) || return 0
-  print_sep
   for ((i=0;i<${#labels[@]};i+=2)); do
     if (( i+1 < ${#labels[@]} )); then
       printf '  🟢 %-16s 🟢 %s\n' "${labels[i]}" "${labels[i+1]}"
@@ -35,4 +37,5 @@ titanvps_render_active_services() {
       printf '  🟢 %s\n' "${labels[i]}"
     fi
   done
+  print_sep
 }

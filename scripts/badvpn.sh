@@ -177,7 +177,7 @@ badvpn_run_action() {
   "$@" >> "$BADVPN_LOG" 2>&1 || result=$?
   flock -u "$lock_fd"; exec {lock_fd}>&-
   if (( result == 0 )); then
-    wait_enter_box 'BADVPN' "$label: concluído." 
+    return 0
   else
     wait_enter_box 'ERRO BADVPN' "$label: falhou (código $result)." "Log: $BADVPN_LOG"
   fi
@@ -266,13 +266,13 @@ badvpn_menu() {
   while true; do
     menu_select render_badvpn_menu 8 0
     case "$MENU_SELECTED" in
-      0) if confirm_with_menu 'INSTALAR BADVPN' 'Compilar/atualizar e configurar serviço?'; then badvpn_run_action 'Instalar / Atualizar' badvpn_install_impl; fi ;;
+      0) badvpn_run_action 'Instalar / Atualizar' badvpn_install_impl ;;
       1) badvpn_run_action 'Reiniciar BadVPN' badvpn_restart_impl ;;
       2) if badvpn_installed; then badvpn_run_action 'Ativar Multiporta' badvpn_apply_mode multi; else wait_enter_box 'BADVPN' 'Instale o BadVPN primeiro.'; fi ;;
       3) if badvpn_multi; then badvpn_run_action 'Reiniciar Multiporta' badvpn_apply_mode multi; else wait_enter_box 'BADVPN' 'O modo multiporta não está ativo.'; fi ;;
       4) if badvpn_multi; then badvpn_run_action 'Remover Multiporta' badvpn_apply_mode single; else wait_enter_box 'BADVPN' 'O modo multiporta não está ativo.'; fi ;;
-      5) if confirm_with_menu 'OTIMIZAÇÃO BADVPN' 'Alternar otimização da rede?'; then badvpn_run_action 'Alternar Otimização' badvpn_optimize_impl; fi ;;
-      6) if confirm_with_menu 'REMOVER BADVPN' 'Remover serviços, binário e configuração?'; then badvpn_run_action 'Remover BadVPN' badvpn_remove_impl; fi ;;
+      5) badvpn_run_action 'Alternar Otimização' badvpn_optimize_impl ;;
+      6) badvpn_run_action 'Remover BadVPN' badvpn_remove_impl ;;
       7) return 0 ;;
     esac
   done

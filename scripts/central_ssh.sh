@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Central SSH: instaladores externos executados somente apos confirmacao.
+# Central SSH: scripts externos validados antes da execucao.
 DTPROTO_INSTALL_URL='https://raw.githubusercontent.com/DTunnel0/DTProto-Server-Releases/main/install-server.sh'
 SSHORIZON_INSTALL_URL='https://install.sshorizon.org/scripts/sshorizon.sh'
 
@@ -52,29 +52,25 @@ _executar_instalador_ssh_temp() (
   fi
   rm -f -- "$temp_script"
   if (( status == 0 )); then
-    wait_enter_box "$nome" 'Instalador finalizado sem erros reportados.'
+    return 0
   else
     wait_enter_box "$nome" "Instalador encerrado com erro (codigo: $status)." 'Confira as mensagens acima.'
   fi
 )
 
 instalar_dtproto() {
-  if confirm_with_menu 'INSTALAR DTPROTO' 'Baixar e executar o instalador do DTProto?' 'Origem: DTunnel0/DTProto-Server-Releases' 'Pode instalar servicos e alterar configuracoes de rede.'; then
-    executar_instalador_ssh 'DTPROTO' "$DTPROTO_INSTALL_URL"
-  fi
+  executar_instalador_ssh 'DTPROTO' "$DTPROTO_INSTALL_URL"
 }
 
 instalar_sshorizon() {
-  if confirm_with_menu 'INSTALAR SSHORIZON' 'Baixar e executar o instalador do SSHorizon?' 'Origem: install.sshorizon.org' 'O instalador externo pode alterar servicos e configuracoes da VPS.'; then
-    executar_instalador_ssh 'SSHORIZON' "$SSHORIZON_INSTALL_URL"
-  fi
+  executar_instalador_ssh 'SSHORIZON' "$SSHORIZON_INSTALL_URL"
 }
 
 central_ssh_menu() {
   while true; do
     menu_select render_central_ssh_menu 5 0
     case "$MENU_SELECTED" in
-      0) wait_enter_box 'CENTRAL SSH' 'A opcao 1 esta reservada para o proximo script.' ;;
+      0) : ;; 
       1) instalar_dtproto ;;
       2) instalar_sshorizon ;;
       3) badvpn_menu ;;
