@@ -2,7 +2,17 @@
 # Atualizacao de releases publicados pelo proprietario no GitHub.
 TITANVPS_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 # Configuracoes locais preservadas durante a atualizacao.
-source "$TITANVPS_ROOT/github.conf"
+if [[ ! -f "$TITANVPS_ROOT/.titanvps/github.conf" && -f "$TITANVPS_ROOT/github.conf" ]]; then
+  mkdir -p "$TITANVPS_ROOT/.titanvps"
+  cp -p "$TITANVPS_ROOT/github.conf" "$TITANVPS_ROOT/.titanvps/github.conf"
+fi
+if [[ -f "$TITANVPS_ROOT/.titanvps/github.conf" ]]; then
+  source "$TITANVPS_ROOT/.titanvps/github.conf"
+else
+  GITHUB_USER='vzeusy'
+  GITHUB_REPO='titanvps'
+  GITHUB_BRANCH='main'
+fi
 VERSION_FILE="$TITANVPS_ROOT/version"
 CURRENT_VERSION='0.0.1'
 REMOTE_VERSION=''
@@ -31,7 +41,7 @@ check_github_version() {
   UPDATE_AVAILABLE=0
   UPDATE_CHECK_ERROR=''
   if ! github_is_configured; then
-    UPDATE_CHECK_ERROR='Configure github.conf para ativar as atualizacoes.'
+    UPDATE_CHECK_ERROR='Configure .titanvps/github.conf para ativar as atualizacoes.'
     return 0
   fi
   if ! command -v curl >/dev/null 2>&1; then
@@ -149,7 +159,15 @@ PYZIP
     wait_enter_box 'ERRO' 'Falha ao gerar backup de seguranca.'
     return 0
   fi
-  # Somente arquivos gerenciados sao substituidos; github.conf e outros arquivos locais ficam intactos.
+  # Configuracao local preservada; versoes antigas recebem a configuracao interna.
+  mkdir -p "$TITANVPS_ROOT/.titanvps"
+  if [[ ! -f "$TITANVPS_ROOT/.titanvps/github.conf" ]]; then
+    if [[ -f "$TITANVPS_ROOT/github.conf" ]]; then
+      cp -p "$TITANVPS_ROOT/github.conf" "$TITANVPS_ROOT/.titanvps/github.conf" || failed=1
+    elif [[ -f "$candidate/.titanvps/github.conf" ]]; then
+      install -m 0644 "$candidate/.titanvps/github.conf" "$TITANVPS_ROOT/.titanvps/github.conf" || failed=1
+    fi
+  fi
   local prior_manifest="$TITANVPS_ROOT/.managed-scripts"
   local new_manifest="$stage/managed-scripts"
   find "$candidate/scripts" -maxdepth 1 -type f -name '*.sh' -printf '%f\n' | LC_ALL=C sort > "$new_manifest"
