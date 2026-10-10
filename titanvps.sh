@@ -7,9 +7,10 @@ if [[ -f "$BASE_DIR/scripts/menu.sh" ]]; then
   # Autocorrecao para instalacoes anteriores sem atalho de comando.
   if (( EUID == 0 )) && [[ "$BASE_DIR" == /opt/titanvps ]]; then
     install -d -m 0755 /usr/local/bin
-    printf '#!/usr/bin/env bash\nexec /bin/bash /opt/titanvps/titanvps.sh "$@"\n' > /usr/local/bin/.titanvps-command.tmp
-    chmod 0755 /usr/local/bin/.titanvps-command.tmp
-    mv -f /usr/local/bin/.titanvps-command.tmp /usr/local/bin/titanvps
+    local_launcher="$(mktemp /usr/local/bin/.titanvps.XXXXXXXX)"
+    printf '#!/usr/bin/env bash\nexec /bin/bash %q "$@"\n' "$BASE_DIR/titanvps.sh" > "$local_launcher"
+    chmod 0755 "$local_launcher"
+    mv -f -- "$local_launcher" /usr/local/bin/titanvps
   fi
   exec bash "$BASE_DIR/scripts/menu.sh" "$@"
 fi

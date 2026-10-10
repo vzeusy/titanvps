@@ -206,24 +206,38 @@ PYZIP
     done < "$prior_manifest"
   fi
   install -m 0644 "$new_manifest" "$prior_manifest"
-  # Garantir que o comando global exista apos atualizacoes de instalacoes antigas.
-  if [[ "$TITANVPS_ROOT" == /opt/titanvps && $EUID -eq 0 ]]; then
-    if install -d -m 0755 /usr/local/bin; then
-      local command_tmp
-      command_tmp="$(mktemp /usr/local/bin/.titanvps.XXXXXXXX)" || command_tmp=''
-      if [[ -n "$command_tmp" ]]; then
-        printf '#!/usr/bin/env bash\nexec /bin/bash /opt/titanvps/titanvps.sh "$@"\n' > "$command_tmp"
-        chmod 0755 "$command_tmp"
-        if ! mv -f -- "$command_tmp" /usr/local/bin/titanvps; then
-          rm -f -- "$command_tmp"
-          printf 'Aviso: nao foi possivel criar o comando titanvps.\n' >&2
+  # Registrar o comando global antes de considerar a atualizacao bem-sucedida.
+  # Usar caminho real da instalacao (inclusive instalacoes anteriores).
+  if (( EUID == 0 )); then
+    local command_tmp='' launcher_target
+    launcher_target="$TITANVPS_ROOT/titanvps.sh"
+    if ! install -d -m 0755 /usr/local/bin; then
+      failed=1
+    else
+      command_tmp="$(mktemp /usr/local/bin/.titanvps.XXXXXXXX)" || failed=1
+      if (( ! failed )); then
+        if ! printf '#!/usr/bin/env bash\nexec /bin/bash %q "$@"\n' "$launcher_target" > "$command_tmp" ||
+           ! chmod 0755 "$command_tmp" ||
+           ! mv -f -- "$command_tmp" /usr/local/bin/titanvps; then
+          failed=1
         fi
       fi
     fi
+    [[ -z "$command_tmp" ]] || rm -f -- "$command_tmp"
+  else
+    failed=1
   fi
+  if (( failed )); then
+    cp -a "$backup/." "$TITANVPS_ROOT/" || true
+    rm -rf -- "$stage" "$backup"
+    wait_enter_box 'ERRO' 'Falha ao registrar comando titanvps. Arquivos anteriores restaurados.'
+    return 0
+  fi
+  # Evitar a tela de conclusao e recarregar as funcoes que acabaram de atualizar.
   rm -rf -- "$stage" "$backup"
-  CURRENT_VERSION="$REMOTE_VERSION"
-  UPDATE_AVAILABLE=0
-  wait_enter_box 'ATUALIZACAO CONCLUIDA' "TITAN VPS atualizado para v$CURRENT_VERSION." 'Reinicie o TITAN VPS para carregar os novos comandos.'
-  return 2
+  hash -r 2>/dev/null || true
+  exec /bin/bash "$TITANVPS_ROOT/scripts/menu.sh"
+  # So chega aqui caso o exec falhe.
+  wait_enter_box 'ERRO' 'Falha ao reiniciar o menu. Execute titanvps novamente.'
+  return 0
 }

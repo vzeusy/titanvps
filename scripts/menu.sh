@@ -112,13 +112,21 @@ menu_select() {
       up) selected=$(( (selected - 1 + count) % count )) ;;
       down) selected=$(( (selected + 1) % count )) ;;
       letter_a)
-        if [[ "$renderer" == 'render_main_menu' ]]; then selected=0; fi
+        if [[ "$renderer" == 'render_main_menu' ]]; then
+          # Atalho A executa a opcao mesmo quando ela ja esta destacada.
+          selected=0
+          MENU_SELECTED=0
+          break
+        fi
         ;;
       digit)
         if [[ "$NAV_DIGIT" == "0" ]]; then
           selected=$((count - 1))
         else
-          local numeric_index=$((10#$NAV_DIGIT - 1 + ${MENU_HAS_UPDATE:-0}))
+          # O menu principal tem A antes de [1]; submenus comecam em [1].
+          local offset=0 numeric_index
+          [[ "$renderer" == 'render_main_menu' ]] && offset=1
+          numeric_index=$((10#$NAV_DIGIT - 1 + offset))
           if (( numeric_index >= 0 && numeric_index < count - 1 )); then
             selected=$numeric_index
           fi
@@ -233,7 +241,7 @@ main_menu() {
   while true; do
     menu_select render_main_menu 6 0
     case "$MENU_SELECTED" in
-      0) atualizar_script || { local code=$?; if (( code == 2 )); then return 0; fi; } ; check_github_version ;;
+      0) atualizar_script; check_github_version ;;
       1) atualizar_servidor ;;
       2) alterar_senha_root ;;
       3) formatar_servidor ;;
