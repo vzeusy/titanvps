@@ -106,7 +106,7 @@ with zipfile.ZipFile(zip_path) as z:
     for info in entries:
         name = info.filename
         p = pathlib.PurePosixPath(name)
-        if name.startswith('/') or '\\' in name or any(x in ('', '.', '..') for x in name.rstrip('/').split('/')) or len(p.parts) < 2:
+        if name.startswith('/') or '\\' in name or any(x in ('', '.', '..') for x in name.rstrip('/').split('/')) or (len(p.parts) < 2 and not info.is_dir()):
             raise ValueError('Caminho inseguro')
         if stat.S_IFMT(info.external_attr >> 16) == stat.S_IFLNK:
             raise ValueError('Link simbolico nao permitido')
@@ -159,6 +159,7 @@ PYZIP
     wait_enter_box 'ERRO' 'Falha ao gerar backup de seguranca.'
     return 0
   fi
+  local failed=0
   # Configuracao local preservada; versoes antigas recebem a configuracao interna.
   mkdir -p "$TITANVPS_ROOT/.titanvps"
   if [[ ! -f "$TITANVPS_ROOT/.titanvps/github.conf" ]]; then
@@ -176,7 +177,6 @@ PYZIP
     wait_enter_box 'ERRO' 'Nenhum modulo encontrado no pacote.'
     return 0
   fi
-  local failed=0
   install -m 0755 "$candidate/titanvps.sh" "$TITANVPS_ROOT/titanvps.sh" || failed=1
   if (( ! failed )); then
     for entry in "$candidate/scripts/"*.sh; do

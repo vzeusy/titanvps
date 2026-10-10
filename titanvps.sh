@@ -36,7 +36,7 @@ with zipfile.ZipFile(archive) as z:
     for i in files:
         n=i.filename
         p=pathlib.PurePosixPath(n)
-        if n.startswith('/') or '\\' in n or any(x in ('.','..','') for x in n.rstrip('/').split('/')) or len(p.parts)<2 or stat.S_IFMT(i.external_attr>>16)==stat.S_IFLNK:
+        if (not n or n.startswith('/') or '\\' in n or any(x in ('', '.', '..') for x in n.rstrip('/').split('/')) or (len(p.parts)<2 and not i.is_dir()) or stat.S_IFMT(i.external_attr>>16)==stat.S_IFLNK):
             raise SystemExit('Pacote invalido: caminho inseguro')
         roots.add(p.parts[0])
     if len(roots)!=1:
@@ -47,7 +47,7 @@ with zipfile.ZipFile(archive) as z:
     needed=['titanvps.sh','version','scripts/menu.sh','scripts/atualizador.sh','scripts/central_ssh.sh','scripts/operacoes.sh','scripts/formatar.sh','scripts/badvpn.sh','scripts/status.sh']
     if not all((source/f).is_file() for f in needed):
         raise SystemExit('Pacote sem arquivos obrigatorios')
-    if (source/'version').read_text().strip() != '0.0.2' and not (source/'version').read_text().strip():
+    if not __import__('re').fullmatch(r'[0-9]+\.[0-9]+\.[0-9]+', (source/'version').read_text().strip()):
         raise SystemExit('Arquivo de versao invalido')
     destp=pathlib.Path(dest)
     destp.mkdir(parents=True, exist_ok=True)
